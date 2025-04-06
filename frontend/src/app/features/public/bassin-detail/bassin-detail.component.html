@@ -1,0 +1,368 @@
+<app-header></app-header>
+
+<!-- Section principale -->
+<section class="shop-details py-5 bg-light">
+  <div class="container">
+    <div class="row g-5">
+      <!-- Galerie d'images -->
+      <div class="col-lg-6">
+        <div class="product-gallery">
+          <!-- Image principale avec zoom -->
+          <div class="main-image mb-4 position-relative">
+            <img
+              [src]="selectedImage || 'assets/default-image.webp'"
+              alt="{{ bassin?.nomBassin }}"
+              class="img-fluid rounded-3 shadow-lg"
+              id="mainImage"
+              (click)="toggleZoom()"
+              [class.zoomed]="isZoomed"
+            />
+            <div class="zoom-indicator" *ngIf="isZoomed">
+              <i class="fas fa-search-minus"></i> Zoom activé
+            </div>
+          </div>
+
+          <!-- Miniatures des images -->
+          <div class="thumbnails d-flex flex-wrap gap-2">
+            <div
+              *ngFor="let imageUrl of imagePreviews"
+              class="thumbnail-item"
+              (click)="changeImage(imageUrl)"
+              [class.active]="selectedImage === imageUrl"
+            >
+              <img
+                [src]="imageUrl"
+                alt="{{ bassin?.nomBassin }}"
+                class="img-thumbnail rounded-3"
+              />
+            </div>
+          </div>
+
+          <!-- Boutons 3D et AR -->
+          <div class="innovative-features d-flex gap-3 mt-4">
+            <button class="btn btn-dark w-50" (click)="viewIn3D()">
+              <i class="fas fa-cube me-2"></i> Voir en 3D
+            </button>
+            <button class="btn btn-secondary w-50" (click)="viewInAR()">
+              <i class="fas fa-vr-cardboard me-2"></i> Voir en AR
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Détails du produit -->
+      <div class="col-lg-6">
+        <div class="product-details p-4 bg-white rounded-3 shadow-sm">
+          <!-- Mode normal - Détails du produit -->
+          <div *ngIf="!isCustomizing" [@fadeInOut]>
+            <h1 class="display-5 fw-bold mb-3">{{ bassin?.nomBassin }}</h1>
+            <div class="rating mb-3">
+              <i class="fas fa-star text-warning"></i>
+              <i class="fas fa-star text-warning"></i>
+              <i class="fas fa-star text-warning"></i>
+              <i class="fas fa-star text-warning"></i>
+              <i class="far fa-star text-warning"></i>
+              <span class="ms-2 text-muted">(5 avis)</span>
+            </div>
+            <h2 class="text-success fw-bold mb-4">
+              {{ bassin?.prix | currency: 'EUR':'symbol':'1.2-2' }}
+            </h2>
+            <p class="lead text-muted mb-4">{{ bassin?.description }}</p>
+
+            <!-- Caractéristiques -->
+            <div class="product-features mb-4">
+              <h5 class="fw-bold mb-3">Caractéristiques</h5>
+              <div class="row">
+                <div class="col-6 mb-2">
+                  <span class="text-muted">Dimensions:</span>
+                  <span class="ms-2 fw-bold">{{ bassin?.dimensions || 'Standard' }}</span>
+                </div>
+                <div class="col-6 mb-2">
+                  <span class="text-muted">Matériau:</span>
+                  <span class="ms-2 fw-bold">{{ bassin?.materiau || 'Standard' }}</span>
+                </div>
+                <div class="col-6 mb-2">
+                  <span class="text-muted">Couleur:</span>
+                  <span class="ms-2 fw-bold">{{ bassin?.couleur || 'Standard' }}</span>
+                </div>
+                <div class="col-6 mb-2">
+                  <span class="text-muted">Stock:</span>
+                  <span class="ms-2 fw-bold">{{ bassin?.stock || 0 }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Boutons d'action -->
+            <div class="action-buttons mt-5">
+              <div class="d-flex gap-3 mb-3">
+                <button class="btn btn-primary btn-lg flex-grow-1" (click)="addToCart()">
+                  <i class="fas fa-cart-plus me-2"></i> Ajouter au panier
+                </button>
+                <button class="btn btn-outline-danger btn-lg" (click)="addToFavorites()">
+                  <i class="fas fa-heart me-2"></i> Favoris
+                </button>
+              </div>
+              <button class="btn btn-outline-primary btn-lg w-100" (click)="startCustomization()">
+                <i class="fas fa-sliders-h me-2"></i> Personnaliser ce bassin
+              </button>
+            </div>
+          </div>
+
+          <!-- Mode personnalisation -->
+          <div *ngIf="isCustomizing && !isCustomizationComplete" [@fadeInOut]>
+            <div class="customization-header d-flex justify-content-between align-items-center mb-4">
+              <h3 class="fw-bold m-0">Personnalisation</h3>
+              <button class="btn btn-sm btn-outline-secondary" (click)="cancelCustomization()">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+
+            <!-- Indicateur d'étapes -->
+            <div class="progress-steps mb-4">
+              <div class="progress mb-2">
+                <div class="progress-bar" role="progressbar" 
+                    [style.width]="(customizationStep / totalSteps * 100) + '%'"
+                    [attr.aria-valuenow]="customizationStep" 
+                    aria-valuemin="0" 
+                    aria-valuemax="3">
+                </div>
+              </div>
+              <div class="steps-indicator d-flex justify-content-between">
+                <span class="step-label" [class.active]="customizationStep >= 1">Dimensions</span>
+                <span class="step-label" [class.active]="customizationStep >= 2">Matériaux</span>
+                <span class="step-label" [class.active]="customizationStep >= 3">Options</span>
+              </div>
+            </div>
+
+            <form [formGroup]="customizationForm" class="customization-wizard">
+              <!-- Étape 1: Dimensions -->
+              <div *ngIf="customizationStep === 1" [@slideInOut] class="step-content">
+                <h4 class="step-title mb-3">Dimensions du bassin</h4>
+                
+                <div class="row mb-4">
+                  <div class="col-md-4">
+                    <div class="form-floating mb-3">
+                      <input type="number" class="form-control" id="length" formControlName="length" placeholder="Longueur" min="1" step="0.1">
+                      <label for="length">Longueur (m)</label>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-floating mb-3">
+                      <input type="number" class="form-control" id="width" formControlName="width" placeholder="Largeur" min="1" step="0.1">
+                      <label for="width">Largeur (m)</label>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-floating mb-3">
+                      <input type="number" class="form-control" id="depth" formControlName="depth" placeholder="Profondeur" min="0.5" step="0.1">
+                      <label for="depth">Profondeur (m)</label>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="dimension-visualization mb-4 p-3 border rounded">
+                  <p class="text-center mb-2">Volume estimé: 
+                    <strong>{{ (customizationForm.value.length || 0) * (customizationForm.value.width || 0) * (customizationForm.value.depth || 0) | number:'1.1-1' }} m³</strong>
+                  </p>
+                  <div class="dimension-visual" 
+                      [style.width.px]="(customizationForm.value.width || 1) * 50"
+                      [style.height.px]="(customizationForm.value.length || 1) * 50">
+                    <div class="depth-indicator">{{ customizationForm.value.depth || 1 }}m</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Étape 2: Matériaux et Couleur -->
+              <div *ngIf="customizationStep === 2" [@slideInOut] class="step-content">
+                <h4 class="step-title mb-3">Matériaux et finitions</h4>
+                
+                <div class="row mb-4">
+                  <div class="col-md-6">
+                    <label class="form-label">Matériau</label>
+                    <div class="material-selector">
+                      <div class="material-options">
+                        <div class="form-check material-option" *ngFor="let mat of ['beton', 'fibre', 'acier', 'bois']">
+                          <input class="form-check-input" type="radio" 
+                                [value]="mat" 
+                                formControlName="materiau" 
+                                [id]="'mat-' + mat">
+                          <label class="form-check-label material-card" [for]="'mat-' + mat">
+                            <div class="material-icon">
+                              <i class="fas" 
+                                [ngClass]="{
+                                  'fa-cube': mat === 'beton',
+                                  'fa-tint': mat === 'fibre',
+                                  'fa-shield-alt': mat === 'acier',
+                                  'fa-tree': mat === 'bois'
+                                }"></i>
+                            </div>
+                            <div class="material-name">
+                              {{ 
+                                {
+                                  'beton': 'Béton',
+                                  'fibre': 'Fibre de verre',
+                                  'acier': 'Acier',
+                                  'bois': 'Bois'
+                                }[mat]
+                              }}
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <label class="form-label">Couleur</label>
+                    <div class="color-selector">
+                      <div class="color-options">
+                        <div class="form-check color-option" *ngFor="let color of ['bleu', 'blanc', 'noir', 'vert']">
+                          <input class="form-check-input" type="radio" 
+                                [value]="color" 
+                                formControlName="couleur" 
+                                [id]="'color-' + color">
+                          <label class="form-check-label color-circle" [for]="'color-' + color">
+                            <span class="color-preview" [ngStyle]="getColorDisplay(color)"></span>
+                            <span class="color-name">{{ color | titlecase }}</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Étape 3: Options -->
+              <div *ngIf="customizationStep === 3" [@slideInOut] class="step-content">
+                <h4 class="step-title mb-3">Options supplémentaires</h4>
+                
+                <div class="form-floating mb-4">
+                  <textarea class="form-control" id="options" formControlName="options" 
+                          placeholder="Vos demandes spéciales" style="height: 120px"></textarea>
+                  <label for="options">Instructions spéciales (optionnel)</label>
+                </div>
+                
+                <div class="price-estimation p-3 mb-4 bg-light rounded">
+                  <h5 class="text-center mb-3">Prix estimé</h5>
+                  <p class="display-6 text-center text-success fw-bold">
+                    {{ calculateCustomPrice() | currency: 'EUR':'symbol':'1.2-2' }}
+                  </p>
+                  <p class="text-center text-muted">
+                    *Prix basé sur vos spécifications personnalisées
+                  </p>
+                </div>
+              </div>
+              
+              <!-- Boutons de navigation -->
+              <div class="navigation-buttons d-flex justify-content-between mt-4">
+                <button 
+                  type="button" 
+                  class="btn btn-outline-secondary" 
+                  (click)="previousStep()">
+                  <i class="fas fa-arrow-left me-2"></i> 
+                  {{ customizationStep === 1 ? 'Annuler' : 'Précédent' }}
+                </button>
+                <button 
+                  type="button" 
+                  class="btn btn-primary" 
+                  (click)="nextStep()"
+                  [disabled]="!isStepValid()">
+                  {{ customizationStep < totalSteps ? 'Suivant' : 'Finaliser' }} 
+                  <i class="fas" [ngClass]="customizationStep < totalSteps ? 'fa-arrow-right' : 'fa-check'"></i>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Résumé de la personnalisation -->
+          <div *ngIf="isCustomizationComplete" [@fadeInOut] class="customization-summary">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3 class="fw-bold m-0">Résumé de votre bassin personnalisé</h3>
+              <button class="btn btn-sm btn-outline-secondary" (click)="cancelCustomization()">
+                <i class="fas fa-edit"></i>
+              </button>
+            </div>
+
+            <div class="summary-card p-4 bg-light rounded mb-4">
+              <div class="row mb-3">
+                <div class="col-6">
+                  <span class="fw-bold">Dimensions:</span>
+                </div>
+                <div class="col-6">
+                  {{ customizationSummary.dimensions }}
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-6">
+                  <span class="fw-bold">Matériau:</span>
+                </div>
+                <div class="col-6">
+                  {{ customizationSummary.materiau | titlecase }}
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-6">
+                  <span class="fw-bold">Couleur:</span>
+                </div>
+                <div class="col-6">
+                  <span class="color-dot" [ngStyle]="getColorDisplay(customizationSummary.couleur)"></span>
+                  {{ customizationSummary.couleur | titlecase }}
+                </div>
+              </div>
+              <div class="row mb-3" *ngIf="customizationSummary.options">
+                <div class="col-6">
+                  <span class="fw-bold">Options:</span>
+                </div>
+                <div class="col-6">
+                  {{ customizationSummary.options }}
+                </div>
+              </div>
+              <div class="row price-row pt-3 border-top">
+                <div class="col-6">
+                  <span class="fs-5 fw-bold">Prix total:</span>
+                </div>
+                <div class="col-6">
+                  <span class="fs-5 fw-bold text-success">
+                    {{ customizationSummary.prixEstime | currency: 'EUR':'symbol':'1.2-2' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <button type="button" class="btn btn-primary btn-lg w-100" (click)="onSubmit()">
+              <i class="fas fa-shopping-cart me-2"></i> Ajouter au panier
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section des avis -->
+<section class="reviews py-5 bg-white">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-12">
+        <h2 class="fw-bold mb-4">Avis des clients</h2>
+        <div class="review-list">
+          <div *ngFor="let avis of [1, 2]" class="review-item mb-4 p-4 bg-light rounded-3 shadow-sm">
+            <div class="review-header d-flex justify-content-between mb-3">
+              <h5 class="fw-bold">Client {{ avis }}</h5>
+              <div class="rating">
+                <i class="fas fa-star text-warning"></i>
+                <i class="fas fa-star text-warning"></i>
+                <i class="fas fa-star text-warning"></i>
+                <i class="fas fa-star text-warning"></i>
+                <i class="far fa-star text-warning"></i>
+              </div>
+            </div>
+            <p class="text-muted">Super produit, je recommande !</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<app-footer></app-footer>
